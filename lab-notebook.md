@@ -1,10 +1,6 @@
 # NovaSplice
 #### Arya Kaul
 
-
-
-## Step 1 - Identify papers to aid in the model building process
-
 #### 2018-06-15
 Google drive folder has been created with relevant papers. [Link is here](https://drive.google.com/drive/folders/14_M6-YHQTlVhZLqZwtEI6FyJ9Phcl88U?usp=sharing).
 
@@ -23,4 +19,7 @@ I then wrote a function that given a dna sequence, generates every possible *sin
 Now, I need to build a function that can take a nucleotide sequence, and an associated index. And assign a score (likelihood function) to that nucleotide index to the probability of that index being involved in a splicing event.
 
 **UPDATE** - I think it would be more simple to split the initial function into 3 separate scores. One score for the mutation leading to a donor splice site, one score for the mutation leading to a branch point adenine, and one score for the mutation leading to a acceptor splice site.
+
+#### 2018-06-18
+I've successfully completed the `donorScore` function, and cleaned up some logic in the beginning. I've also added more thorough commenting throughout.
 
