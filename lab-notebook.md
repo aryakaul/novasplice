@@ -23,3 +23,17 @@ Now, I need to build a function that can take a nucleotide sequence, and an asso
 #### 2018-06-18
 I've successfully completed the `donorScore` function, and cleaned up some logic in the beginning. I've also added more thorough commenting throughout.
 
+#### 2018-06-19
+Completed the acceptorScore function - I think it's working well -- but I'm not sure how efficient my approach is. It seems like there should be a good way to combine each of these functions together; however, it still eludes me. Potentially after I complete the branchScore function, I will be better able to think of a good approach for this.
+
+Completed the branchScore function. Now I have to think of a good way to output his data. Currently the information I compute is binary. ie.e given a dna-sequence and an index (location of SNP) within that dna-sequence, I can tell you if the mutation creates a donor splice site, a branch point, or a acceptor splice site.
+
+Given that, what's the best way to output that information? I could create a dictionary of sorts that tracks for every index (location of SNP) how many times does a mutation result in the introduction of a splice site?? That could be interesting, I could determine if novel intronic splice 'hotspots' exist by seeing if that distribution changes substantially between locations. I can't think of a good reason why it could, but eh who knows? I could also try and output the spliced exons I predict using the information I got? That might be good for clinical stuff.
+
+Since the first idea is easier to implement I think I'll start with that approach. So in an ideal scenario, this is the format of the file I would like to output:
+
+|LOCATION|A|C|G|T|
+|--------|-|-|-|-|
+|0       |2|2|3|R|
+
+An 'R' would denote the fact that this is the reference at this location. The numbers would correspond to the # of all possible splice sites generated at that position and with that nucleotide substitution. Note that multiple splice sites are possible at a given location and nucleotide since the distance between the donor splice site and the branch point is arbitrary (per my understanding of the lit?? Plus when I make this probabilistic, it would make more sense)
