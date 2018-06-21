@@ -21,14 +21,14 @@ def readInFasta(fastapath):
     return fastadict
 
 def generateMutagenesis(dnaseq):
-    mutatedNTs = {}
+    mutatedNTs = []
     nts = ['A','C','G','U']
     for ntindex in range(len(dnaseq)):
         for nt in nts:
             deepcopy = dnaseq[:]
             if nt != dnaseq[ntindex]:
                 deepcopy[ntindex] = nt
-                mutatedNTs[("").join(deepcopy)]=[ntindex, str(dnaseq[ntindex])+"->"+str(nt)]
+                mutatedNTs.append([("").join(deepcopy),ntindex, str(dnaseq[ntindex])+"->"+str(nt)])
     return mutatedNTs
 
 def donorScore(dnaseq, index):
@@ -142,9 +142,9 @@ def outputSpliceSumm(mutatedNTs, outputpath):
     indexDict = {}
     ntidxlookup = {'A':0, 'C':1, 'G':2, 'U':3}
     for mutations in mutatedNTs:
-        totalSplice = sum(mutatedNTs[mutations][2:5])
-        index = mutatedNTs[mutations][0]
-        ntandref = mutatedNTs[mutations][1]
+        totalSplice = sum(mutations[3:6])
+        index = mutations[1]
+        ntandref = mutations[2]
         newnt = ntandref.split(">")[1]
         ref = ntidxlookup[ntandref.split("-")[0]]
         ntidx = ntidxlookup[newnt]
@@ -165,20 +165,21 @@ def main():
     for seqids in seqDict:
         mutatedNTs = generateMutagenesis(list(seqDict[seqids]))
         for mutations in mutatedNTs:
-            print("%s potential mutation being studied" % (mutations))
+            print("Index of mutation: %s Ref->Alt:%s" % (mutations[1],mutations[2]))
             print("Potential donor sites being analyzed")
-            donorsplice = donorScore(mutations, mutatedNTs[mutations][0])
-            mutatedNTs[mutations].append(donorsplice)
+            donorsplice = donorScore(mutations[0], mutations[1])
+            mutations.append(donorsplice)
 
             print("Potential branch points being analyzed")
-            branchsplice = branchScore(mutations, mutatedNTs[mutations][0])
-            mutatedNTs[mutations].append(branchsplice)
+            branchsplice = branchScore(mutations[0], mutations[1])
+            mutations.append(branchsplice)
 
             print("Potential acceptor sites being analyzed")
-            acceptsplice = acceptorScore(mutations, mutatedNTs[mutations][0])
-            mutatedNTs[mutations].append(acceptsplice)
-            print("-------------------------\n")
-        summaryoutputpath=os.path.join(args.outputPath,seqids+".summary")
-        outputSpliceSumm(mutatedNTs, summaryoutputpath)
-if __name__=="__main__":
+            acceptsplice = acceptorScore(mutations[0], mutations[1])
+            mutations.append(acceptsplice)
+        outputSpliceSumm(mutatedNTs, args.outputPath)
+
+
+
+if __name__ == "__main__":
     main()

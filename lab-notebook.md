@@ -37,3 +37,14 @@ Since the first idea is easier to implement I think I'll start with that approac
 |0       |2|2|3|R|
 
 An 'R' would denote the fact that this is the reference at this location. The numbers would correspond to the # of all possible splice sites generated at that position and with that nucleotide substitution. Note that multiple splice sites are possible at a given location and nucleotide since the distance between the donor splice site and the branch point is arbitrary (per my understanding of the lit?? Plus when I make this probabilistic, it would make more sense)
+
+#### 2018-06-21
+Yesterday I wrote a function `randomSeqs.py` that can generate a fasta file containing a set of random DNA sequences at a specified length. I also wrote and tested the function to output the first output file described above. I attempted to run my code on a fasta file with RNA sequence length of 100,000; but that crashed. Currently, I am working on optimizing my code, and will try again.
+
+In the meantime, I'll run my code NovaSplice on 50 RNA sequences of length 10,000. 
+
+**UPDATE** I was able to successfully run NovaSplice on the 10,000 length data, and I've rewritten the code to hopefully be more memory efficient. I'll start running the 100,000 length data before I leave and consider ways to visualize and analyze the resulting summary stats from the 10,000 length data.
+
+Based on cursory exploration it appears that most positions have no splice sites, regardless of the mutation. There are a number of very strong position/mutation combos that appear to exhibit an extremely high number of splice sites. 
+
+Max. splice sites found in 10,000 length data is 3,027 splice sites as determined by `grep` and `wc`.
