@@ -160,7 +160,8 @@ def outputSpliceSumm(mutatedNTs, outputpath):
 def main():
     args = parse_args(sys.argv[1:])
     seqDict = readInFasta(args.fastaFile)
-    os.makedirs(args.outputPath, exist_ok=True)
+    if not os.path.isdir(args.outputPath):
+        os.makedirs(args.outputPath)
     for seqids in seqDict:
         mutatedNTs = generateMutagenesis(list(seqDict[seqids]))
         for mutations in mutatedNTs:
