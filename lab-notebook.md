@@ -48,3 +48,19 @@ In the meantime, I'll run my code NovaSplice on 50 RNA sequences of length 10,00
 Based on cursory exploration it appears that most positions have no splice sites, regardless of the mutation. There are a number of very strong position/mutation combos that appear to exhibit an extremely high number of splice sites. 
 
 Max. splice sites found in 10,000 length data is 3,027 splice sites as determined by `grep` and `wc`.
+
+#### 2018-06-22
+100,000 long RNA sequences are still being processed; however, I visualized the 10,000 RNA sequences a bit more. I generated two plots reproduced here:
+
+![alt text](./figs/2018-06-22_MUTNTbySSFREQUENCY.png)
+![alt text](./figs/2018-06-22_INDEXbySSFREQUENCY.png)
+
+**What do these mean??** Not really sure, but let's take a stab. Let's analyze the mutated nucleotide vs Splice Site frequency figure first.
+
+The figure shows a clear spike in Adenine/Guanine creating a Splice site vs Cytosine or Uracil. This makes sense! A typical splice site has the following form:
+
+XXXXXGU----A----AGXXXXXX
+
+Where the 'X' refers to exons. As you can see, Cytosine is not present at all (hence why it's count is zero. good!). Additionally Uracil appears only once, while Adenine and Guanine appear twice as much. This is good! There is an interesting consideration that is not being taken into account though: the poly-pyrimidine tail. The poly-pyrimidine tail appears to the right of the branch point and typically consists of 15-20 pyrimidines (but mostly Uracil). Let's say that previously the region contained 14 uracils, and one Guanine. A mutation changing that Guanine to a Uracil could cause a splice site to develop in that region. Currently, NovaSplice doesn't take that into account; however, it should be something considered and I'll add it to future work. All in all, this figure is what's to be expected and I think makes sense in the context of what I know so far.
+
+The second figure is where things get dicey. Theoretically, given an infinitely long string of random RNA any location (should be?) equally likely of forming a novel splice site. In that case, why do we observe so many splice site in the beginning with a frequency of one? Why don't we see any later on? Additionally, why does one location have the propensity to generate so many splice sites? Currently, I'm not sure why this is the case, but it does warrant further investigation. ALL IN ALL I THINK THIS IS GOING VERY WELL.
