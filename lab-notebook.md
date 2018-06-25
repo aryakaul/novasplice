@@ -64,3 +64,8 @@ XXXXXGU----A----AGXXXXXX
 Where the 'X' refers to exons. As you can see, Cytosine is not present at all (hence why it's count is zero. good!). Additionally Uracil appears only once, while Adenine and Guanine appear twice as much. This is good! There is an interesting consideration that is not being taken into account though: the poly-pyrimidine tail. The poly-pyrimidine tail appears to the right of the branch point and typically consists of 15-20 pyrimidines (but mostly Uracil). Let's say that previously the region contained 14 uracils, and one Guanine. A mutation changing that Guanine to a Uracil could cause a splice site to develop in that region. Currently, NovaSplice doesn't take that into account; however, it should be something considered and I'll add it to future work. All in all, this figure is what's to be expected and I think makes sense in the context of what I know so far.
 
 The second figure is where things get dicey. Theoretically, given an infinitely long string of random RNA any location (should be?) equally likely of forming a novel splice site. In that case, why do we observe so many splice site in the beginning with a frequency of one? Why don't we see any later on? Additionally, why does one location have the propensity to generate so many splice sites? Currently, I'm not sure why this is the case, but it does warrant further investigation. ALL IN ALL I THINK THIS IS GOING VERY WELL.
+
+
+#### 2018-06-25
+The 100,000 run crashed before finishing. This was to be expected, as it was studying 50*3<sup>100,000</sup> possible mutation events for splice sites. The README is beautiful, and I've refined the test cases and outputs. 
+
