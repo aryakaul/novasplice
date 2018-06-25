@@ -72,7 +72,7 @@ An 'R' would denote the fact that this is the reference at this location. The nu
 
 ## Description
 The following is how NovaSplice's algorithm currently works:
-1. Given some arbitrary RNA sequence of length *n*, generate every possible single nucleotide mutagenesis event. This leads to a set of possible mutated sequences of size ``3^{n}``, where each sequence has length *n*. Denote this set *R*
+1. Given some arbitrary RNA sequence of length *n*, generate every possible single nucleotide mutagenesis event. This leads to a set of possible mutated sequences of size *3<sup>n</sup>*, where each sequence has length *n*. Denote this set *R*
 2. For *s* in *R*:
     * Check if mutation in *s* -> donor splice site
     * Check if mutation in *s* -> branch point
