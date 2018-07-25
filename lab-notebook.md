@@ -67,5 +67,31 @@ The second figure is where things get dicey. Theoretically, given an infinitely 
 
 
 #### 2018-06-25
-The 100,000 run crashed before finishing. This was to be expected, as it was studying 50*3<sup>100,000</sup> possible mutation events for splice sites. The README is beautiful, and I've refined the test cases and outputs. 
+The 100,000 run crashed before finishing. This was to be expected, as it was studying 50x3<sup>100,000</sup> possible mutation events for splice sites. The README is beautiful, and I've refined the test cases and outputs. 
 
+#### 2018-07-19
+I've come back to this project, and will be adjusting it considerably. The new workflow will be oriented towards inclusion of NovaSplice as a useful tool within a traditional BINF WES analysis pipeline.
+
+I will be making use of MaxEntScan, a tool developed by Dr. Yeo, to score different strings of DNA for potential to be SS. The new, proposed workflow is as follows:
+
+1. For a given VCF file loop through all variants 
+    * Determine score of 5'ss and 3'ss caused by new variant by extracting vcf
+    * Determine if either score is within X% of canonical splice site
+        * If so, return possible new splice site
+
+#### 2018-07-24
+I spent yesterday and today working on the code for the new version of NovaSplice. I'll be using as a proof of concept the 16th chromosome of the grcm38 assembly. 
+
+I downloaded the following data:
+
+```
+wget ftp://ftp.ensembl.org/pub/release-93/fasta/mus_musculus/dna/Mus_musculus.GRCm38.dna.chromosome.16.fa.gz mus_musculus.grcm38.chr16.fa.gz
+wget ftp://ftp.ensembl.org/pub/release-93/gtf/mus_musculus/Mus_musculus.GRCm38.93.chr.gtf.gz mus_musculus.grcm38.chr16.gtf.gz
+```
+
+I then processed it using the following commands:
+```
+gunzip mus_musculus.grcm38.chr16.fa.gz
+zcat mus_musculus.grcm38.chr16.gtf.gz | grep "exon" | awk '{ print "chr16\t" $4-2 "\t" $4+6 "\nchr16\t" $4-20 "\t" $4+2 "\nchr16\t" $5-2 "\t" $5+6 "\nchr16\t" $5-20 "\t" $5+2}' > mus_musculus.grcm38.chr16.splice-sites
+bedtools getfasta -fi ./mus_musculus.grcm38.chr16.fa -bed ./mus_musculus.grcm38.chr16.splice-sites -fo ./mus_musculus.grcm39.chr16.exonboundaries.fa
+```
