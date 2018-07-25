@@ -8,6 +8,7 @@ import argparse
 import numpy as np
 import pybedtools
 import gzip
+from novasplice.hisat2_extract_exons import extract_exons
 
 global mat5
 global mat3
@@ -40,6 +41,10 @@ def compute_three_score(dna):
         print("ERROR INCORRECT LENGTH: %s" % dna)
     return maxent_fast.score3(dna, matrix=mat3)
 
+def extract_exon_boundaries(gtf, output):
+    with gzip.open(gtf, 'rt') as g:
+        extract_exons(g, output)
+
 def generate_splicingbedfile_fromgtf(gtf, output):
     with gzip.open(gtf, 'rt') as g:
         with open(os.path.join(output, "splice-site.bed"), 'w') as bed:
@@ -54,10 +59,22 @@ def generate_splicingbedfile_fromgtf(gtf, output):
                 bed.write("%s\t%s\t%s\n" % (chrom, exend-3, exend+6))
                 bed.write("%s\t%s\t%s\n" % (chrom, exend-21, exend+2))
 
+def generate_splicingbed_withexonbound(output):
+    with open(os.path.join(output, "exon-boundaries"), 'r') as exons:
+        with open(os.path.join(output, "splice-site.bed"), 'w') as bed:
+            for lines in exons:
+                line = lines.rstrip().split()
+                chrom = line[0]
+                exst = int(line[1])
+                exen = int(line[2])
+                direct = line[3]
+                bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exst-20, exst+3, direct))
+                bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exen-2, exen+7, direct))
+
 def generate_fastafile_frombed(output, ref):
     bedfile = pybedtools.BedTool(os.path.join(output, "splice-site.bed"))
     fasta = pybedtools.BedTool(ref)
-    bedfile = bedfile.sequence(fi=fasta)
+    bedfile = bedfile.sequence(fi=fasta, s=True)
     return bedfile.seqfn
 
 def main():
@@ -68,25 +85,30 @@ def main():
         os.makedirs(args.output)
     basepath = args.output
 
-    # identify canonical splicing regions
-    generate_splicingbedfile_fromgtf(args.gtf, basepath)
-    fasta = generate_fastafile_frombed(basepath, args.reference)
+    # extract and score reference fasta from file
+    extract_exon_boundaries(args.gtf, args.output)
+    generate_splicingbed_withexonbound(args.output)
+    fasta = 
+     
+    x = {}
     for j in open(fasta):
-        print(j)
+        j = j.rstrip()
+        if len(j) == 0 or j.startswith(">"): print(j)
+        elif len(j) == 9:
+            fivescore = compute_five_score(j)
+            print("%s\t%s" % (j, fivescore))
+            if j[3:5] not in x: x[j[3:5]] = [0,0]
+            x[j[3:5]][0] += 1
+        elif len(j) == 23:
+            threescore = compute_three_score(j)
+            print("%s\t%s" % (j, threescore))
+            if j[18:20] not in x: x[j[18:20]] = [0,0]
+            x[j[18:20]][1] += 1
+        else:
+            print("ERROR")
+            sys.exit(2)
+    sys.exit(2)
 
-
-    """
-    with open(os.path.join(basepath, "five_score_summary"), 'a') as five_file:
-        for string in generate_all_kmers(9):
-            dna = ''.join(string)
-            score = compute_five_score(dna)
-            five_file.write("%s\t%s\n" % (dna, score))
-    with open(os.path.join(basepath, "three_score_summary"), 'a') as three_file:
-        for i in range(300000):
-            dna = randomlygenerate_threess()
-            score = compute_three_score(dna)
-            three_file.write("%s\t%s\n" % (dna, score))
-    """
 
 if __name__ == "__main__":
     main()

@@ -95,3 +95,7 @@ gunzip mus_musculus.grcm38.chr16.fa.gz
 zcat mus_musculus.grcm38.chr16.gtf.gz | grep "exon" | awk '{ print "chr16\t" $4-2 "\t" $4+6 "\nchr16\t" $4-20 "\t" $4+2 "\nchr16\t" $5-2 "\t" $5+6 "\nchr16\t" $5-20 "\t" $5+2}' > mus_musculus.grcm38.chr16.splice-sites
 bedtools getfasta -fi ./mus_musculus.grcm38.chr16.fa -bed ./mus_musculus.grcm38.chr16.splice-sites -fo ./mus_musculus.grcm39.chr16.exonboundaries.fa
 ```
+
+#### 2018-07-25
+Today I completed the functions to read in a GTF file, and a reference fasta file to determine and then score the exon splicing junctions. The next step is to figure out now how to take a vcf file and extract the correct sequence to compare its score against the canonical splice site's scores.
+
