@@ -59,6 +59,29 @@ def generate_splicingbedfile_fromgtf(gtf, output):
                 bed.write("%s\t%s\t%s\n" % (chrom, exend-3, exend+6))
                 bed.write("%s\t%s\t%s\n" % (chrom, exend-21, exend+2))
 
+def generate_variantbedfile_fromvcf(vcf, output):
+    with open(vcf, 'r') as vcf:
+        with open(os.path.join(output, "variant-site.bed"), 'w') as new:
+            for lines in vcf:
+                line = lines.rstrip()
+                if line.startswith("#"): continue
+                line = line.split()
+                chrom = line[0]
+                pos = int(line[1])
+                variant_name = line[2]
+                for x in range(9):
+                    st = pos-9+x
+                    en = pos+x
+                    name = variant_name + "-5ss-" + str(x)
+                    string = "%s\t%s\t%s\t%s\n" % (chrom, st, en, name)
+                    new.write(string)
+                for y in range(23):
+                    st = pos-23+y
+                    en = pos+y
+                    name = variant_name + "-3ss-" + str(y)
+                    string = "%s\t%s\t%s\t%s\n" % (chrom, st, en, name)
+                    new.write(string)
+
 def generate_splicingbed_withexonbound(output):
     with open(os.path.join(output, "exon-boundaries"), 'r') as exons:
         with open(os.path.join(output, "splice-site.bed"), 'w') as bed:
@@ -88,8 +111,12 @@ def main():
     # extract and score reference fasta from file
     extract_exon_boundaries(args.gtf, args.output)
     generate_splicingbed_withexonbound(args.output)
-    fasta = 
-     
+    fasta = generate_fastafile_frombed(args.output, args.reference)
+    sys.exit(2)
+
+    generate_variantbedfile_fromvcf(args.vcf, args.output)
+    
+
     x = {}
     for j in open(fasta):
         j = j.rstrip()

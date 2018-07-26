@@ -99,3 +99,5 @@ bedtools getfasta -fi ./mus_musculus.grcm38.chr16.fa -bed ./mus_musculus.grcm38.
 #### 2018-07-25
 Today I completed the functions to read in a GTF file, and a reference fasta file to determine and then score the exon splicing junctions. The next step is to figure out now how to take a vcf file and extract the correct sequence to compare its score against the canonical splice site's scores.
 
+#### 2018-07-26
+Today I wrote a function to read in the vcf file and construct a bed file detailing the various possible splice sites generated.
