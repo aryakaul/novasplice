@@ -114,7 +114,7 @@ def main():
     fasta = generate_fastafile_frombed(args.output, args.reference)
     generate_variantbedfile_fromvcf(args.vcf, args.output)
     sys.exit(2)
-     
+
 
     x = {}
     for j in open(fasta):
