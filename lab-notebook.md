@@ -101,3 +101,12 @@ Today I completed the functions to read in a GTF file, and a reference fasta fil
 
 #### 2018-07-26
 Today I wrote a function to read in the vcf file and construct a bed file detailing the various possible splice sites generated.
+
+#### 2018-07-27
+The plan is to use the bed file (created from the vcf) and the bam file to extract the sequences of the regions indicated. These sequences will then be scored and compared against their closest acceptor/donor splice sites. Scores that are higher than the canonical region OR within 20% of the lower bound of the canoncical splice site's score.
+
+I have also empirically calculated given a bad ss (< -10 score) and a SNP in that ss, the probability that the bad ss becomes a good ss (>= -10 score) is ~0.01338. Therefore, out of the 2.95 million SNPs that fall in non-coding regions it is expected about 39,235 of those SNPs would lead to novel splice sites. Quite a bit! Possible reasons that I see such a large number:
+1. Even though they're 'good splice sites' they're actually just 'ok' and don't sufficiently compete against canonical splice sites
+2. Non-coding dna regions are not just random DNA sequences -- natural selection favors noncoding sequences that are not close to becoming splice sites
+3. We all have these, but they don't have a big effect
+

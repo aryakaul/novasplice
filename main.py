@@ -112,10 +112,9 @@ def main():
     extract_exon_boundaries(args.gtf, args.output)
     generate_splicingbed_withexonbound(args.output)
     fasta = generate_fastafile_frombed(args.output, args.reference)
-    sys.exit(2)
-
     generate_variantbedfile_fromvcf(args.vcf, args.output)
-    
+    sys.exit(2)
+     
 
     x = {}
     for j in open(fasta):
