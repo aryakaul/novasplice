@@ -1,5 +1,5 @@
 # NovaSplice
-##### Developed by Arya Kaul (last updated on 2018-06-25)
+##### Developed by Arya Kaul (last updated on 2018-08-02)
 NovaSplice is a tool to determine locations of potential novel splicing given mutagenesis at those locations.
 
 

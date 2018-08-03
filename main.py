@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import glob
 from maxentpy.maxent import load_matrix5, load_matrix3
 from maxentpy import maxent_fast
