@@ -5,84 +5,30 @@ NovaSplice is a tool to determine locations of potential novel splicing given mu
 
 ## Requirements
 * Python3
-
-## Installation
-
-To use NovaSplice, first ensure that the requirements are correctly installed. Then run:
-```
-git clone https://github.com/aryakaul/novasplice.git
-cd novasplice/scripts
-python3 main.py --help
-```
-
-If all requirements are correctly installed you should see the following message:
-```
-usage: main.py [-h] -i FASTAFILE [-o OUTPUTPATH]
-
-Check the help flag
-
-optional arguments:
-    -h, --help            show this help message and exit
-    -i FASTAFILE, --fastaFile FASTAFILE 
-        Direct path to the fasta file being analyzed.
-    -o OUTPUTPATH, --outputPath OUTPUTPATH
-        Direct path to the desired output folder.
-```
+* maxentpy
+* pybedtools
 
 ## Usage
 
-### NovaSplice
-Use NovaSplice by running:
-
 ```
-python3 main.py -i ./FASTAFILE -o ./OUTPUTFOLDER/
+novasplice -v $VCF_FILE -r $REFERENCE_FASTA_FILE -g $REFERENCE_GTF_FILE 
 ```
 
-The -i flag is required, and if no argument is specified for -o, then it will create a folder in the working directory with name `NovaSplice` and dump output files there. The bulk of the output is directed to stdout, and if that interests you, you should pipe the output of the command to a new file.
+Beyond those required arguments, Novasplice also offers 
 
-If I pass NovaSplice a FASTA file with the following content:
 ```
->ex0
-GGAUUUUUUUUUUUUUUUAGU
+-l, --libraryname : the name of the output novasplice predictions file. Default is 'novasplice-predictions'
+-p, --percent : float representing the lowerbound percent difference Novasplice calls a novel splice region at. i.e. if maxent scores the canonical site as 100, setting a percent of 0.1 means anything above 90 (100-0.1*100) gets called as a novel splice site. Default is 0.05
+-o, --output : output directory to pipe results to
 ```
-
-An example of the first 13 lines of stdout is reproduced below:
-```
-Index of mutation: 0 Ref->Alt:G->A
-        Potential donor sites being analyzed
-        Potential branch points being analyzed
-                Potential branch point found
-        Potential acceptor sites being analyzed
-Index of mutation: 0 Ref->Alt:G->C
-        Potential donor sites being analyzed
-        Potential branch points being analyzed
-        Potential acceptor sites being analyzed
-Index of mutation: 0 Ref->Alt:G->U
-        Potential donor sites being analyzed
-        Potential branch points being analyzed
-        Potential acceptor sites being analyzed
-```
-As can be seen, NovaSplice searches every possible mutation event for the three potential sites explained below. The file `ex0.summary` in the created output folder has the following format:
-
-|LOCATION|A|C|G|T|
-|--------|-|-|-|-|
-|0       |2|2|3|R|
-
-An 'R' would denote the fact that this is the reference at this location. The numbers would correspond to the # of all possible splice sites generated at that position and with that nucleotide substitution. Note that multiple splice sites are possible at a given location and nucleotide since the distance between the donor splice site and the branch point is arbitrary. 
 
 ## Description
-The following is how NovaSplice's algorithm currently works:
-1. Given some arbitrary RNA sequence of length *n*, generate every possible single nucleotide mutagenesis event. This leads to a set of possible mutated sequences of size *3<sup>n</sup>*, where each sequence has length *n*. Denote this set *R*
-2. For *s* in *R*:
-    * Check if mutation in *s* -> donor splice site
-    * Check if mutation in *s* -> branch point
-    * Check if mutation in *s* -> acceptor splice site
-3. Output those sequences and mutation events that lead to a splice site.
-
-A splice site is defined as a stretch of sequences having each of the following requirements:
-* A 'GU' sequence
-* A possible branch point some arbitrary position upstream of the 'GU'
-* A polypyrimidine tail following the potential branch point consisting of >13 pyrimidines and having more than 50% Uracil content
-* A 'AG' immediately after the polypyrimidine tail
-
-As of the writing of this. This procedure outputs a binary score (1/0) with no stochastic modeling. This is the next step in NovaSplice's development.
+The following is how Novasplice works:
+1. For every variant, *V*, in the provided VCF:
+    1. Identify and score the closest canonical splice site to *V*, denote it *C*
+    2. Score(*C*) = *S*
+    3. Generate the set of all possible splice sites, *PS*, containing *V*
+    4. For every splice site, *P'*, in *PS*:
+        1. Score(*P'*) = *S'*
+        2. If *S'* > *S* or within some user-defined bound less than *S*:
+            * Report possible splice site
