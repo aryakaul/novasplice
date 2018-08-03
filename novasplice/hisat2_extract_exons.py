@@ -18,15 +18,16 @@
 # You should have received a copy of the GNU General Public License
 # along with HISAT 2.  If not, see <http://www.gnu.org/licenses/>.
 #
+# Modified by Arya Kaul for NovaSplice
 
 from __future__ import print_function
 
 from sys import stderr, exit
 from collections import defaultdict as dd, Counter
 from argparse import ArgumentParser, FileType
-import os
 
-def extract_exons(gtf_file, output, verbose = False):
+
+def extract_exons(gtf_file, output):
     genes = dd(list)
     trans = {}
 
@@ -101,46 +102,11 @@ def extract_exons(gtf_file, output, verbose = False):
                 strand = exon[3]
             exons[-1] = (prev_exon[0], prev_exon[1], exon[2], strand)
 
-    with open(os.path.join(output, "exon-boundaries"), 'w') as f:
+    with open(output, 'w') as f:
         for chrom, left, right, strand in exons:
             # Zero-based offset
             f.write('{}\t{}\t{}\t{}\n'.format(chrom, left-1, right-1, strand))
 
-    # Print some stats if asked
-    if verbose:
-        None
-        """
-        exon_lengths, intron_lengths, trans_lengths = \
-            Counter(), Counter(), Counter()
-        for chrom, strand, exons in trans.values():
-            tran_len = 0
-            for i, exon in enumerate(exons):
-                exon_len = exon[1]-exon[0]+1
-                exon_lengths[exon_len] += 1
-                tran_len += exon_len
-                if i == 0:
-                    continue
-                intron_lengths[exon[0] - exons[i-1][1]] += 1
-            trans_lengths[tran_len] += 1
-
-        print('genes: {}, genes with multiple isoforms: {}'.format(
-                len(genes), sum(len(v) > 1 for v in genes.values())),
-              file=stderr)
-        print('transcripts: {}, transcript avg. length: {:d}'.format(
-                len(trans), sum(trans_lengths.elements())/len(trans)),
-              file=stderr)
-        print('exons: {}, exon avg. length: {:d}'.format(
-                sum(exon_lengths.values()),
-                sum(exon_lengths.elements())/sum(exon_lengths.values())),
-              file=stderr)
-        print('introns: {}, intron avg. length: {:d}'.format(
-                sum(intron_lengths.values()),
-                sum(intron_lengths.elements())/sum(intron_lengths.values())),
-              file=stderr)
-        print('average number of exons per transcript: {:d}'.format(
-                sum(exon_lengths.values())/len(trans)),
-              file=stderr)
-        """
 
 
 if __name__ == '__main__':

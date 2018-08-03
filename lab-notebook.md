@@ -110,3 +110,5 @@ I have also empirically calculated given a bad ss (< -10 score) and a SNP in tha
 2. Non-coding dna regions are not just random DNA sequences -- natural selection favors noncoding sequences that are not close to becoming splice sites
 3. We all have these, but they don't have a big effect
 
+#### 2018-08-02
+I finished NovaSplice! I'm pushing now. If I have time I'll also upload to pip/bioconda.
