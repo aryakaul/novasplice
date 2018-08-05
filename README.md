@@ -1,12 +1,33 @@
 # NovaSplice
-##### Developed by Arya Kaul (last updated on 2018-08-02)
+##### Developed by Arya Kaul 
 NovaSplice is a tool to determine locations of potential novel splicing given mutagenesis at those locations.
 
+## Installation
+If you already have `bioconda` installed, simply run:
+```
+conda install -c bioconda novasplice
+```
+
+Afterwards, run:
+```
+novasplice --help
+```
+
+If you don't have `bioconda`, you may run the following commands to get it:
+```
+conda config --add channels defaults
+conda config --add channels conda-forge
+conda config --add channels bioconda
+```
+
+Find more information [visit the bioconda website](bioconda.github.io)
 
 ## Requirements
 * Python3
 * maxentpy
 * pybedtools
+
+*Note*: All requirements will automatically be installed via conda
 
 ## Usage
 
