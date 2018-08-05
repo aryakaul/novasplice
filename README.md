@@ -20,14 +20,7 @@ conda config --add channels conda-forge
 conda config --add channels bioconda
 ```
 
-Find more information [visit the bioconda website](bioconda.github.io)
-
-## Requirements
-* Python3
-* maxentpy
-* pybedtools
-
-*Note*: All requirements will automatically be installed via conda
+Find more information [at the bioconda website](bioconda.github.io).
 
 ## Usage
 
@@ -43,7 +36,14 @@ Beyond those required arguments, Novasplice also offers
 -o, --output : output directory to pipe results to
 ```
 
-## Description
+### Software Requirements
+* Python3
+* maxentpy
+* pybedtools
+
+*Note*: All requirements will automatically be installed via conda
+
+## Software Workflow
 The following is how Novasplice works:
 1. For every variant, *V*, in the provided VCF:
     1. Identify and score the closest canonical splice site to *V*, denote it *C*
