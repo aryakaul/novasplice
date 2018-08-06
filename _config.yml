@@ -1,5 +1,5 @@
 theme: jekyll-theme-minimal
 logo: ./figs/novasplice-logo.png
 show_downloads: true
-description: NovaSplice is a tool to predict novel intronic splice sites
+description: A Python based command line tool to predict novel intronic splice sites
 title: NovaSplice
