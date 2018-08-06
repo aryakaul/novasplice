@@ -1,5 +1,3 @@
-NovaSplice is a tool to determine locations of potential novel splicing within non-coding regions of DNA given mutagenesis at those locations.
-
 ## Installation
 If you already have `bioconda` installed, simply run:
 ```
