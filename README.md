@@ -1,4 +1,3 @@
-##### Developed by Arya Kaul 
 NovaSplice is a tool to determine locations of potential novel splicing within non-coding regions of DNA given mutagenesis at those locations.
 
 ## Installation
@@ -52,3 +51,6 @@ The following is how Novasplice works:
         1. Score(*P'*) = *S'*
         2. If *S'* > *S* or within some user-defined bound less than *S*:
             * Report possible splice site
+            
+### Acknowledgments
+This tool was developed by [Arya Kaul](aryakaul.github.io) in consultation with the Sunyaev Lab at the Harvard Medical School. 
