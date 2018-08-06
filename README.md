@@ -20,7 +20,7 @@ conda config --add channels conda-forge
 conda config --add channels bioconda
 ```
 
-Find more information [at the bioconda website](bioconda.github.io).
+Find more information [at the bioconda website](https://bioconda.github.io).
 
 ## Usage
 
