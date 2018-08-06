@@ -1,4 +1,4 @@
-[![Anaconda-Server Badge](https://anaconda.org/bioconda/novasplice/badges/installer/conda.svg)](https://conda.anaconda.org/bioconda)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/novasplice/badges/installer/conda.svg)](https://bioconda.github.io/recipes/novasplice/README.html)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/novasplice/badges/downloads.svg)](https://anaconda.org/bioconda/novasplice)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/novasplice/badges/license.svg)](https://anaconda.org/bioconda/novasplice)
 
