@@ -112,3 +112,8 @@ I have also empirically calculated given a bad ss (< -10 score) and a SNP in tha
 
 #### 2018-08-02
 I finished NovaSplice! I'm pushing now. If I have time I'll also upload to pip/bioconda.
+
+#### 2018-08-07
+So, I did have time to upload it. Novasplice is now hosted on bioconda! Surprisingly easy to do this! Gonna keep doing this in the future. Also, just had a meeting with Dr. Sunyaev, and we plan to run NovaSplice on a whole bunch of datasets.
+
+After talking to Onuralp, I also added some options that enable to users to use a gzip compressed or uncompressed file for everything. I also have added code to skip indels and other weird stuff in a VCF file. Running on a human test vcf now. 
