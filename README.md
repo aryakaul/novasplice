@@ -53,6 +53,30 @@ The following is how Novasplice works:
         1. Score(*P'*) = *S'*
         2. If *S'* > *S* or within some user-defined bound less than *S*:
             * Report possible splice site
-            
+
+## In-Depth Workflow
+
+1. Create `exon-boundaries.bed`. What is `exon-boundaries.bed`? `exon-boundaries.bed` is a bed file that contains the coordinates of the start and end sites for every exon in the provided `GTF` file. The code to do this was lovingly adapted from the brilliant team behind `HiSAT2` and it is this team that deserves all recognition for this step. If a file with this name already exists under the specified output directory, then this step is skipped.
+
+2. We use `exon-boundaries.bed` to create a new bed file. This bed file is called `splice-sites.bed`. What is `splice-sites.bed`? `splice-sites.bed` contains the regions corresponding to the 5' and 3' splice sites. Maxentscan, the splice site prediction tool used by NovaSplice (at the time of this writing), requires a 9 bp sequence to score a potential 5' splice site (3 bases in exon + 6 bases in intron) and a 23 bp sequence to score a potential 3' splice site (20 bases in intron + 3 bases in exon). The procedure to generate this file is merely to loop through every exon within the `exon-boundaries.bed` file and write two new bed entries corresponding to that exon's 3/5' splice site. Note that this is dependent upon the directionality of the strand. As before, if a file with this name already exists under the specified output directory, then this step is skipped.
+
+3. Take the given sorted VCF, and run 
+```
+bedtools intersect -a $VCF -b `exon-boundaries.bed` -v --header --sorted > subset.vcf
+```
+
+What does this command do? We generate a new VCF, called `subset.vcf` that contains the subset of variants that do not fall within an exon. Why is this important? It'll speed up the computation, and NovaSplice is designed to be used for the identification of novel splice sites in non-coding regions of DNA. As I've said before, if this file exists; we SKIP.
+
+4. The next steps are a series of `bedtools closest` commands. This functionality might get more refined as NovaSplice is developed; however, currently it makes the following important assumption: **If a novel splice site occurs within a non-coding region of DNA, that novel splice site will only compete with the closest upstream and downstream canonical splice sites.** While I can make a logical defense of this assumption within my head, this does not appear (to me) to be immediately obvious. Irregardless, here is what I do:
+    1. **Case 1** - I have a variant on the + strand, and it induces a novel 5' splice site. In this case, I run `bedtools closest --ignore-upstream`. The result is the location of the closest canonical 5' splice site to my variant of interest. This gets appended to the file `close-down.bed`.
+    2. **Case 2** - I have a variant on the + strand, and it induces a novel 3' splice site. In this case, I run `bedtools closest --ignore-downstream`. The result is the location of the closest canonical 3' splice site to my variant of interest. This gets appended to the file `close-up.bed`
+    3. **Case 3** - I have a variant on the - strand, and it induces a novel 5' splice site. In this case, I run `bedtools closest --ignore-upstream`. The result is the location of the closest canonical 5' splice site to my variant of interest. This gets appended to the file `close-down.bed`.
+    4. **Case 4** - I have a variant on the - strand, and it induces a novel 3' splice site. In this case, I run `bedtools closest --ignore-downstream`. The result is the location of the closest canonical 3' splice site to my variant of interest. This gets appended to the file `close-up.bed`.
+
+So what is the result of all this? I get two files: `close-up.bed` and `close-down.bed`. If everything went well, `close-up.bed` should only contain 5' splice sites, and `close-down.bed` should only contain 3' splice sites. But alas, life is hard.
+
+5. 
+
+
 ### Acknowledgments
 This tool was developed by [Arya Kaul](aryakaul.github.io) in consultation with the Sunyaev Lab at the Harvard Medical School. 

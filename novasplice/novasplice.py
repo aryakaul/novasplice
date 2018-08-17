@@ -109,8 +109,12 @@ def generate_splicingbed_withexonbound(output):
                 exen = int(line[2])
                 if exst-20 < 0 or exen-1 < 0: continue
                 direct = line[3]
-                bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exst-20, exst+3, direct))
-                bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exen-1, exen+6, direct))
+                if direct == "+":
+                    bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exst-19, exst+3, direct))
+                    bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exen-1, exen+7, direct))
+                elif direct == "-":
+                    bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exst-7, exst+1, direct))
+                    bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exen+19, exen-3, direct))
     a = pybedtools.BedTool(os.path.join(output, "splice-site.bed"))
     a = a.sort().moveto(os.path.join(output,"splice-site.bed"))
 
@@ -203,7 +207,9 @@ def compare_scores(variantsitesfasta, canonicalscoredict, percent, output, donor
 def main():
     args = parser_args(sys.argv[1:])
 
-    # We need all of the following.
+    # We need all of the following:
+    # TODO if the files that we need for a certain feature are
+    ## already generated, then make these options unrequired.
     if not args.vcf and not args.zippedvcf:
         print("ERROR. VCF required, please use -v or -vz")
         sys.exit(2)
@@ -214,20 +220,25 @@ def main():
         print("ERROR. Reference GTF required, please use -g or -gz")
         sys.exit(2)
 
-    #create output folder if it doesn't exist
+    # create output folder if it doesn't exist. This is the folder
+    ## all intermediate files will be generated within. 
     if not os.path.exists(args.output):
         os.makedirs(args.output)
     basepath = args.output
 
-    print("Generating a bed file of exon boundaries...")
-    start = time.time()
 
     # generate a bed file of each canonical splice site. This bed file contains the locations
     ## of each exon from start to finish and is saved as $OUTPUT/exon-boundaries.bed
-    if args.gtf:
-        extract_exon_boundaries(args.gtf, os.path.join(args.output, "exon-boundaries.bed"), False)
+    exonboundaries-bedfile = os.path.join(args.output, "exon-boundaries.bed")
+    if os.path.exists(exonboundaries-bedfile):
+        print("Bed file containing the boundaries of exons is already generated. Moving on!")
     else:
-        extract_exon_boundaries(args.zippedgtf, os.path.join(args.output, "exon-boundaries.bed"), True)
+        print("Generating a bed file of exon boundaries...")
+        start = time.time()
+        if args.gtf:
+            extract_exon_boundaries(args.gtf, exonboundaries-bedfile, False)
+        else:
+            extract_exon_boundaries(args.zippedgtf, exonboundaries-bedfile, True)
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
 
@@ -239,10 +250,14 @@ def main():
     ## $OUTPUT/splice-site.bed #NOTE have somebody smart determine if the way I'm doing this is actually
     ## right
     print("Generating a splicing bed file using exon boundaries...")
-    start = time.time()
-    generate_splicingbed_withexonbound(args.output)
-    end = time.time()
-    print("Finished generating. Time took %s" % (end-start))
+    splicesites-bedfile = os.path.join(args.output, "splice-sites.bed")
+    if os.path.exists(splicesites-bedfile):
+        print("Bed file containing splice sites is already generated. Moving on!")
+    else:
+        start = time.time()
+        generate_splicingbed_withexonbound(args.output)
+        end = time.time()
+        print("Finished generating. Time took %s" % (end-start))
 
     # for every variant in vcf, find the closest upstream and downstream canonical splice site associated with the variant
     if args.vcf:
