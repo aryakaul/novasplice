@@ -21,14 +21,16 @@ mat3 = load_matrix3()
 
 def parser_args(args):
     parser = argparse.ArgumentParser(prog="novasplice")
-    parser.add_argument('-v', '--vcf', help="Full path to the vcf file being used", type=str, required=False)
-    parser.add_argument('-vz', '--zippedvcf', help="Full path to the zipped vcf file being used", type=str, required=False)
+    parser.add_argument('-v', '--vcf', help="Full path to the sorted vcf file being used", type=str, required=False)
+    parser.add_argument('-vz', '--zippedvcf', help="Full path to the sorted zipped vcf file being used", type=str, required=False)
     parser.add_argument('-r', '--reference', help="Full path to the reference genome being used", type=str, required=False)
     parser.add_argument('-rz', '--zippedreference', help="Full path to the zipped reference genome being used", type=str, required=False)
-    parser.add_argument('-g', '--gtf', help="Full path to the reference gtf being used", type=str, required=False)
-    parser.add_argument('-gz', '--zippedgtf', help="Full path to the zipped reference gtf being used", type=str, required=False)
+    parser.add_argument('-b', '--bed', help="Full path to the reference exon boundary bed file being used", type=str, required=True)
+    parser.add_argument('-c', '--chrlens', help="Full path to the chromosome length file being used", type=str, required=True)
     parser.add_argument('-p', '--percent', help="Lower bound percent to call novel splice site", type=float, required=False, default=0.05)
     parser.add_argument('-o', '--output', help="Path to the output folder to dump simdigree's output to. Default is working directory under /novasplice_output", type=str, required=False, default="./novasplice_output")
+    parser.add_argument('-i', '--intermediate', help="Path to output folder that will hold intermediate files generated, not specific to the provided vcf. Especially useful when running NovaSplice on a large number of VCFs that all come from the same reference and make use of the same --bed option.", required=False, default="./novasplice-temp")
+    parser.add_argument('-t', '--temp', help="Full path to an alternative directory to use for temp files. Default is /tmp", type=str, required=False)
     parser.add_argument('-l', '--libraryname', help="Name of the final file novasplice outputs with predictions", type=str, required=False, default="novasplice_predictions")
     return parser.parse_args(args)
 
@@ -48,15 +50,6 @@ def compute_three_score(dna):
     if len(dna) != 23:
         print("ERROR INCORRECT LENGTH: %s" % dna)
     return maxent_fast.score3(dna, matrix=mat3)
-
-def extract_exon_boundaries(gtf, output, zipped):
-    if zipped:
-        with gzip.open(gtf, 'rt') as g:
-            extract_exons(g, output)
-    else:
-        with open(gtf, 'r') as g:
-            extract_exons(g, output)
-
 
 def generate_variantbedfile_fromvcf(vcf, output, donor, zipped):
     if zipped:
@@ -99,30 +92,44 @@ def generate_variantbedfile_fromvcf(vcf, output, donor, zipped):
                     new.write(string)
     vcf.close()
 
-def generate_splicingbed_withexonbound(output):
-    with open(os.path.join(output, "exon-boundaries.bed"), 'r') as exons:
-        with open(os.path.join(output, "splice-site.bed"), 'w') as bed:
-            for lines in exons:
-                line = lines.rstrip().split()
-                chrom = line[0]
-                exst = int(line[1])
-                exen = int(line[2])
-                if exst-20 < 0 or exen-1 < 0: continue
-                direct = line[3]
-                if direct == "+":
-                    bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exst-19, exst+3, direct))
-                    bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exen-1, exen+7, direct))
-                elif direct == "-":
-                    bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exst-7, exst+1, direct))
-                    bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exen+19, exen-3, direct))
-    a = pybedtools.BedTool(os.path.join(output, "splice-site.bed"))
-    a = a.sort().moveto(os.path.join(output,"splice-site.bed"))
+def filter_snps_only(feature):
+    if len(feature[3])==1 and len(feature[4])==1:
+        return True
+    return False
+
+def generate_splicingbed_withexonbound(ss, chrlens, bed):
+    with open(bed, 'r') as exons:
+        with open(ss, 'w') as bed:
+            with open(chrlens, 'r') as lens:
+                file_contents = lens.read().split()[2:]
+                lensdict = {}
+                for ctr,content in enumerate(file_contents):
+                    if ctr % 2 == 0:
+                        chrom = content
+                        lensdict[chrom] = 0
+                    else:
+                        lensdict[chrom] += int(content)
+                for lines in exons:
+                    line = lines.rstrip().split()
+                    chrom = line[0]
+                    exst = int(line[1])
+                    exen = int(line[2])
+                    if exst-20 < 0 or exen-3 < 0: continue
+                    if exst+3 > lensdict[chrom] or exen+20 > lensdict[chrom]: continue
+                    direct = line[5]
+                    if direct == "+":
+                        bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exst-20, exst+3, direct))
+                        bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exen-3, exen+6, direct))
+                    elif direct == "-":
+                        bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exst-6, exst+3, direct))
+                        bed.write("%s\t%s\t%s\t.\t.\t%s\n" % (chrom, exen-3, exen+20, direct))
+    a = pybedtools.BedTool(ss)
+    a = a.sort().moveto(ss)
 
 def generate_fastafile_frombed(ref, bed):
     bedfile = pybedtools.BedTool(bed)
     fasta = pybedtools.BedTool(ref)
     bedfile = bedfile.sequence(fi=fasta, s=True, name=True)
-    #bedfile = bedfile.sequence(fi=fasta, name=True)
     return bedfile.seqfn
 
 def generate_variantfastafile(fasta, output):
@@ -159,7 +166,6 @@ def extract_canonical_score(inputvcf, output, ref, donor):
             for lines in iv:
                 line = lines.rstrip().split()
                 name = line[0]+"/"+line[1]+"/"+line[2]
-                #nametoscore[name] = -50
                 diff = line[-7:]
                 if diff[0] == ".": continue
                 n.write(diff[0]+"\t"+diff[1]+"\t"+diff[2]+"\t"+name+"\n")
@@ -207,93 +213,70 @@ def compare_scores(variantsitesfasta, canonicalscoredict, percent, output, donor
 def main():
     args = parser_args(sys.argv[1:])
 
-    # We need all of the following:
-    # TODO if the files that we need for a certain feature are
-    ## already generated, then make these options unrequired.
+    if args.temp:
+        pybedtools.set_tmpdir(args.temp)
+
     if not args.vcf and not args.zippedvcf:
         print("ERROR. VCF required, please use -v or -vz")
         sys.exit(2)
     if not args.reference and not args.zippedreference:
         print("ERROR. Reference fasta required, please use -r or -rz")
         sys.exit(2)
-    if not args.gtf and not args.zippedgtf:
-        print("ERROR. Reference GTF required, please use -g or -gz")
-        sys.exit(2)
 
-    # create output folder if it doesn't exist. This is the folder
-    ## all intermediate files will be generated within. 
     if not os.path.exists(args.output):
         os.makedirs(args.output)
-    basepath = args.output
+    if not os.path.exists(args.intermediate):
+        os.makedirs(args.intermediate)
 
-
-    # generate a bed file of each canonical splice site. This bed file contains the locations
-    ## of each exon from start to finish and is saved as $OUTPUT/exon-boundaries.bed
-    exonboundaries-bedfile = os.path.join(args.output, "exon-boundaries.bed")
-    if os.path.exists(exonboundaries-bedfile):
-        print("Bed file containing the boundaries of exons is already generated. Moving on!")
-    else:
-        print("Generating a bed file of exon boundaries...")
-        start = time.time()
-        if args.gtf:
-            extract_exon_boundaries(args.gtf, exonboundaries-bedfile, False)
-        else:
-            extract_exon_boundaries(args.zippedgtf, exonboundaries-bedfile, True)
-    end = time.time()
-    print("Finished generating. Time took %s" % (end-start))
-
-    # generate a NEW bed file from the old one that has two entries for every entry in the previous bed file
-    ## these two entries correspond to the acceptor and donor splice site associated with the previous
-    ## bed file. In particular, maxentscan requires 9 bp for the 5' splice site (3 bases in exon + 6 bases
-    ## in intron) and 23 bp for the 3' splice site (20 bases in intron + 3 bases in exon). This function
-    ## generates these intervals from the previous bed file. It saves this information in the path
-    ## $OUTPUT/splice-site.bed #NOTE have somebody smart determine if the way I'm doing this is actually
-    ## right
-    print("Generating a splicing bed file using exon boundaries...")
-    splicesites-bedfile = os.path.join(args.output, "splice-sites.bed")
-    if os.path.exists(splicesites-bedfile):
+    # Go through the exon-boundaries bed file, and generate a new file
+    #  called $INTERMED/splice-site.bed. This bed file contains the
+    #  organism's canonical splice site coordinates.
+    canonical_splicesites_bedfile = os.path.join(args.intermediate, "splice-site.bed")
+    if os.path.exists(canonical_splicesites_bedfile):
         print("Bed file containing splice sites is already generated. Moving on!")
     else:
+        print("Generating a splicing bed file using exon boundaries...")
         start = time.time()
-        generate_splicingbed_withexonbound(args.output)
+        generate_splicingbed_withexonbound(canonical_splicesites_bedfile, args.chrlens, args.bed)
         end = time.time()
         print("Finished generating. Time took %s" % (end-start))
 
-    # for every variant in vcf, find the closest upstream and downstream canonical splice site associated with the variant
+    # Find the subset of the VCF which contains non-coding variants
+    #    use this VCF for NovaSplice calculations.
+    print("Subsetting VCF to noncoding variants and SNPs")
+    start = time.time()
+    pybedtools.cleanup()
     if args.vcf:
         vcf = pybedtools.BedTool(args.vcf)
     else:
         vcf = pybedtools.BedTool(args.zippedvcf)
-    print("Sorting VCF")
-    start = time.time()
-    vcf.sort(header=True).moveto(os.path.join(args.output, "sorted-vcf.vcf"))
-    vcf = pybedtools.BedTool(os.path.join(args.output, "sorted-vcf.vcf"))
+    exon_bounds = pybedtools.BedTool(args.bed).sort()
+    subset_vcf_location = os.path.join(args.output, "coding-excludedvariants.vcf.gz")
+    vcf.intersect(exon_bounds, v=True, header=True, sorted=True).filter(filter_snps_only).bgzip(is_sorted=True, output=subset_vcf_location)
     end = time.time()
-    print("Finished sorting. Time took %s" % (end-start))
+    print("Finished subsetting. Time took %s" % (end-start))
 
-    print("Generating a bed file of canonical sites closest to variant...")
+    # We now find the closest upstream/downstream canonical splice sites
+    #    non-coding variant in the subsetted VCF
+    print("Finding closest canonical splice sites to each non-coding variant")
     start = time.time()
-    exon_bounds = pybedtools.BedTool(os.path.join(args.output, "exon-boundaries.bed"))
-    subset_vcf = vcf.intersect(exon_bounds, v=True, header=True, sorted=True)
-    canon_bed = pybedtools.BedTool(os.path.join(args.output, "splice-site.bed"))
-
-    # we first ignore the regions that are downstream
-    closest_upstream = subset_vcf.closest(canon_bed, D="ref", id=True).moveto(os.path.join(args.output, "close-up.bed"))
-
-    # and then we ignore the regions that are upstream
-    closest_downstream = subset_vcf.closest(canon_bed, D="ref", iu=True).moveto(os.path.join(args.output, "close-down.bed"))
+    pybedtools.cleanup()
+    subset_vcf = pybedtools.BedTool(subset_vcf_location)
+    canon_bed = pybedtools.BedTool(canonical_splicesites_bedfile)
+    closest_upstream = subset_vcf.closest(canon_bed, D="ref", id=True, output=os.path.join(args.output,"close-up.bed"))
+    closest_downstream = subset_vcf.closest(canon_bed, D="ref", iu=True, output=os.path.join(args.output, "close-down.bed"))
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
 
-    #for every variant, compute the set of 9 possible donor sites with that variant
+    # DONOR SPECIFIC
+
+    # For every variant, compute the set of 9 possible donor sites with that variant
     print("Generating a variant bed file from vcf...")
     start = time.time()
-    if args.vcf:
-        generate_variantbedfile_fromvcf(args.vcf, args.output, True, False)
-    else:
-        generate_variantbedfile_fromvcf(args.zippedvcf, args.output, True, True)
+    generate_variantbedfile_fromvcf(subset_vcf_location, args.output, True, False)
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
+    sys.exit(2)
 
     print("Generating a fasta file from variant bed file...")
     start = time.time()
