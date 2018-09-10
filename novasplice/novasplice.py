@@ -11,7 +11,6 @@ import argparse
 import numpy as np
 import pybedtools
 import gzip
-from hisat2_extract_exons import extract_exons
 
 global mat5
 global mat3
@@ -51,16 +50,45 @@ def compute_three_score(dna):
         print("ERROR INCORRECT LENGTH: %s" % dna)
     return maxent_fast.score3(dna, matrix=mat3)
 
-def generate_variantbedfile_fromvcf(vcf, output, donor, zipped):
+def generate_variantbedfile_fromclosest(closest, bed, donor):
+    with open(closest, 'r') as closebed:
+        with open(bed, 'w') as new:
+            printed = False
+            for lines in closebed:
+                line = lines.rstrip()
+                if line.startswith("#"): continue
+                line = line.split()
+                chrom = line[0]
+                pos = int(line[1])
+                variant_name = line[0]+'/'+line[1]+'/'+line[2]+","+line[-7]+"_"+line[-6]+"_"+line[-5]
+                ref = line[3]
+                alt = line[4]
+                if len(alt) > 1 or len(ref) > 1:
+                    if not printed:
+                        print("VCF file contains Non-SNPs. NovaSplice will continue, but it'll be slower because of these")
+                        printed = True
+                    continue
+                if donor:
+                    for x in range(9):
+                        st = pos-9+x
+                        en = pos+x
+                        name = variant_name + "-5ss-" + str(x) + "-" + ref + "->" + alt
+                        string = "%s\t%s\t%s\t%s\n" % (chrom, st, en, name)
+                        new.write(string)
+                else:
+                    for y in range(23):
+                        st = pos-23+y
+                        en = pos+y
+                        name = variant_name + "-3ss-" + str(y) + "-" + ref + "->" + alt
+                        string = "%s\t%s\t%s\t%s\n" % (chrom, st, en, name)
+                        new.write(string)
+
+def generate_variantbedfile_fromvcf(vcf, bed, donor, zipped):
     if zipped:
         vcf = gzip.open(vcf, 'rt')
     else:
         vcf = open(vcf, 'r')
-    if donor:
-        name = os.path.join(output, "variant-site-donorsites.bed")
-    else:
-        name = os.path.join(output, "variant-site-acceptorsites.bed")
-    with open(name, 'w') as new:
+    with open(bed, 'w') as new:
         printed = False
         for lines in vcf:
             line = lines.rstrip()
@@ -132,6 +160,19 @@ def generate_fastafile_frombed(ref, bed):
     bedfile = bedfile.sequence(fi=fasta, s=True, name=True)
     return bedfile.seqfn
 
+def writevcfheader(path, vcf, zipped):
+    if zipped:
+        vcf_file = gzip.open(vcf,'rt')
+    else:
+        vcf_file = open(vcf, 'r')
+
+    with open(path, 'w') as out:
+        for lines in vcf_file:
+            if lines.startswith('#'):
+                out.write(lines)
+            else:
+                return
+
 def generate_variantfastafile(fasta, output):
     with open(fasta, 'r') as f:
         with open(output, 'w') as g:
@@ -165,9 +206,10 @@ def extract_canonical_score(inputvcf, output, ref, donor):
         with open(os.path.join(output, "intermedbed.bed"), 'w') as n:
             for lines in iv:
                 line = lines.rstrip().split()
-                name = line[0]+"/"+line[1]+"/"+line[2]
+                name = line[0]+"/"+line[1]+"/"+line[2]+","
                 diff = line[-7:]
                 if diff[0] == ".": continue
+                name += diff[0]+"_"+diff[1]+"_"+diff[2]
                 n.write(diff[0]+"\t"+diff[1]+"\t"+diff[2]+"\t"+name+"\n")
     fasta = pybedtools.BedTool(ref)
     bedfile = pybedtools.BedTool(os.path.join(output, 'intermedbed.bed'))
@@ -176,15 +218,35 @@ def extract_canonical_score(inputvcf, output, ref, donor):
         for lines in f:
             if lines.startswith(">"):
                 line = lines.split(">")[1]
-                name = line.split("(")[0]
+                canonical_name = line.split("(")[0].split(",")[1]
             else:
                 if len(lines) == 0: continue
                 seq = lines.rstrip()
-                if donor: score = compute_five_score(seq)
-                else: score = compute_three_score(seq)
-                nametoscore[name] = score
+                if "N" in seq or "n" in seq: continue
+                if donor:
+                    #TODO why do I need this check?
+                    if len(seq) != 9: continue
+                    score = compute_five_score(seq)
+                else:
+                    #TODO why do I need this check?
+                    if len(seq) != 23: continue
+                    score = compute_three_score(seq)
+                nametoscore[canonical_name] = score
                 name = ""
     return nametoscore
+
+def generate_canonicalss_score(fastaname, novelsplice, donor):
+    alternate_allele = fastaname.split(">")[1].split("(")[0]
+    reference_allele = fastaname.split("-")[3]
+    loc = len(novelsplice) - int(fastaname.split("-")[2]) - 1
+    if alternate_allele != novelsplice[loc]: print("ERROR")
+    canonsplice = list(novelsplice)
+    canonsplice[loc] = reference_allele
+    canonsplice = "".join(canonsplice)
+    if donor: score = compute_five_score(canonsplice)
+    else: score = compute_three_score(canonsplice)
+    return score
+
 
 def compare_scores(variantsitesfasta, canonicalscoredict, percent, output, donor, lib):
     sorted_dict = {}
@@ -194,30 +256,53 @@ def compare_scores(variantsitesfasta, canonicalscoredict, percent, output, donor
             if len(line) == 0: continue
             if line.startswith(">"):
                 name = line.split(">")[1].split("-")[0]
-                sortedname = line.split(">")[1]
-                canonicalscore = canonicalscoredict[name]
+                canonicalss_loc = line.split(">")[1].split("-")[0].split(",")[1]
+                sortedname = line[1:]
+                try:
+                    canonicalscore = canonicalscoredict[canonicalss_loc]
+                except:
+                    if donor: word = "upstream"
+                    else: word = "downstream"
+                    print("%s does not have a closest %s canonical splice site" % (name, word))
+                    canonicalscore = -1
             else:
                 novelss = line
+                if "N" in novelss or "n" in novelss: continue
+                if canonicalscore < 0: continue
+                canonscore = generate_canonicalss_score(sortedname, novelss, donor)
+                if canonscore > canonicalscore: continue
                 if donor: novscore = compute_five_score(novelss)
                 else: novscore = compute_three_score(novelss)
                 lb = canonicalscore-(percent*canonicalscore)
                 if novscore>canonicalscore or novscore>lb:
                     print("Potential splice site found!")
-                    print("Novel SS: %s\t Score: %s\t Canonical Score: %s" % (novelss, novscore, canonicalscore))
-                    sorted_dict[sortedname] = (novelss, novscore, canonicalscore)
+                    print("Novel SS: %s\t Novel Score: %s\t Score before variant: %s\tCanonical Score: %s" % (novelss, novscore, canonscore, canonicalscore))
+                    sorted_dict[sortedname] = (novelss, novscore, canonscore, canonicalscore, canonicalss_loc)
     with open(os.path.join(output, lib), 'a') as output:
         for key,value in sorted(sorted_dict.items(), key=lambda kv:kv[1][1], reverse=True):
-            output.write("%s\t%s\t%s\t%s\n" % (key, value[0], value[1], value[2]))
+            output.write("%s\t%s\t%s\t%s\t%s\t%s\n" % (key, value[0], value[1], value[2], value[3], value[4]))
 
+def merge_two_files(bigvcf, vcfheader, newoutput):
+    with gzip.open(newoutput, 'wt') as newfile:
+        with open(vcfheader,'r') as header:
+            headercontent = header.read()
+            newfile.write(headercontent)
+        os.remove(vcfheader)
+        for lines in bigvcf:
+            newfile.write(str(lines).rstrip()+'\n')
 
 def main():
     args = parser_args(sys.argv[1:])
 
     if args.temp:
-        pybedtools.set_tmpdir(args.temp)
+        pybedtools.helpers.set_tempdir(args.temp)
 
     if not args.vcf and not args.zippedvcf:
         print("ERROR. VCF required, please use -v or -vz")
+        if not args.zippedvcf.endswith(".gz"):
+            print("ERROR. --vz used with non-gzipped file (must end with '.gz')")
+        if args.vcf.endswith(".gz"):
+            print("ERROR. --vz option should be used, gzipped file detected")
         sys.exit(2)
     if not args.reference and not args.zippedreference:
         print("ERROR. Reference fasta required, please use -r or -rz")
@@ -246,13 +331,17 @@ def main():
     print("Subsetting VCF to noncoding variants and SNPs")
     start = time.time()
     pybedtools.cleanup()
+    vcfheader_file=os.path.join(args.output, "vcf-header")
     if args.vcf:
+        writevcfheader(vcfheader_file, args.vcf, False)
         vcf = pybedtools.BedTool(args.vcf)
     else:
+        writevcfheader(vcfheader_file, args.zippedvcf, True)
         vcf = pybedtools.BedTool(args.zippedvcf)
     exon_bounds = pybedtools.BedTool(args.bed).sort()
     subset_vcf_location = os.path.join(args.output, "coding-excludedvariants.vcf.gz")
-    vcf.intersect(exon_bounds, v=True, header=True, sorted=True).filter(filter_snps_only).bgzip(is_sorted=True, output=subset_vcf_location)
+    subsetvcf = vcf.intersect(exon_bounds, v=True, sorted=True).filter(filter_snps_only)
+    merge_two_files(subsetvcf, vcfheader_file, subset_vcf_location)
     end = time.time()
     print("Finished subsetting. Time took %s" % (end-start))
 
@@ -263,64 +352,72 @@ def main():
     pybedtools.cleanup()
     subset_vcf = pybedtools.BedTool(subset_vcf_location)
     canon_bed = pybedtools.BedTool(canonical_splicesites_bedfile)
-    closest_upstream = subset_vcf.closest(canon_bed, D="ref", id=True, output=os.path.join(args.output,"close-up.bed"))
-    closest_downstream = subset_vcf.closest(canon_bed, D="ref", iu=True, output=os.path.join(args.output, "close-down.bed"))
+    subset_vcf.closest(canon_bed, D="b", id=True, io=True, output=os.path.join(args.output,"close-up.bed"))
+    subset_vcf.closest(canon_bed, D="b", iu=True, io=True, output=os.path.join(args.output, "close-down.bed"))
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
 
     # DONOR SPECIFIC
-
-    # For every variant, compute the set of 9 possible donor sites with that variant
+    # For every variant, compute the set of 9 possible donor sites with that variant. The
+    #    output is a bed file that has 9 entries for every variant.
+    variantsite_location = os.path.join(args.output,"variant-site-donorsites.bed")
     print("Generating a variant bed file from vcf...")
     start = time.time()
-    generate_variantbedfile_fromvcf(subset_vcf_location, args.output, True, False)
+    #generate_variantbedfile_fromvcf(subset_vcf_location, variantsite_location, True, True)
+    generate_variantbedfile_fromclosest(os.path.join(args.output,"close-down.bed"), variantsite_location, True)
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
-    sys.exit(2)
 
+    # Extract the sequences of every variant and store them in a file. Note that this
+    #    file is not saved anywhere except $TMP and is solely based on the reference
     print("Generating a fasta file from variant bed file...")
     start = time.time()
     if args.reference:
-        fastaref = generate_fastafile_frombed(args.reference, os.path.join(args.output, "variant-site-donorsites.bed"))
+        fastaref = generate_fastafile_frombed(args.reference, variantsite_location)
     else:
-        fastaref = generate_fastafile_frombed(args.zippedreference, os.path.join(args.output, "variant-site-donorsites.bed"))
+        fastaref = generate_fastafile_frombed(args.zippedreference, variantsite_location)
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
 
+    # Mutate the fasta file with the variants found in the vcf file
     print("Mutating fasta file per SNPs in VCF...")
     start = time.time()
     generate_variantfastafile(fastaref, os.path.join(args.output, "variant-site-donorsites.fa"))
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
 
+    # Create a dictionary that relates a given variant to the closest upstream canonical 
+    #   splice site's score
     print("Scoring canonical and novel splice-sites...")
     start = time.time()
     if args.reference:
-        nametoscore = extract_canonical_score(os.path.join(args.output, 'close-up.bed'), args.output, args.reference, True)
+        nametoscore = extract_canonical_score(os.path.join(args.output, 'close-down.bed'), args.output, args.reference, True)
     else:
-        nametoscore = extract_canonical_score(os.path.join(args.output, 'close-up.bed'), args.output, args.zippedreference, True)
+        nametoscore = extract_canonical_score(os.path.join(args.output, 'close-down.bed'), args.output, args.zippedreference, True)
+    with open(os.path.join(args.output, args.libraryname), 'w') as out:
+        out.write("Novel SS\tNovel Score\tScore before variant\tClosest Canonical Score\tLocation of closest canonical ss\n")
     compare_scores(os.path.join(args.output, "variant-site-donorsites.fa"), nametoscore, args.percent, args.output, True, args.libraryname)
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
-
     print("Finished analysis for donor sites. Now doing same for acceptor sites.")
 
-    #for every variant, compute the set of 23 possible acceptor sites with that variant
+    #ACCEPTOR SITES
+
+
+    variantsite_location = os.path.join(args.output,"variant-site-acceptorsites.bed")
     print("Generating a variant bed file from vcf...")
     start = time.time()
-    if args.vcf:
-        generate_variantbedfile_fromvcf(args.vcf, args.output, False, False)
-    else:
-        generate_variantbedfile_fromvcf(args.zippedvcf, args.output, False, True)
+    #generate_variantbedfile_fromvcf(subset_vcf_location, variantsite_location, False, True)
+    generate_variantbedfile_fromclosest(os.path.join(args.output,"close-up.bed"), variantsite_location, False)
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
 
     print("Generating a fasta file from variant bed file...")
     start = time.time()
     if args.reference:
-        fastaref = generate_fastafile_frombed(args.reference, os.path.join(args.output, "variant-site-acceptorsites.bed"))
+        fastaref = generate_fastafile_frombed(args.reference, variantsite_location)
     else:
-        fastaref = generate_fastafile_frombed(args.zippedreference, os.path.join(args.output, "variant-site-acceptorsites.bed"))
+        fastaref = generate_fastafile_frombed(args.zippedreference, variantsite_location)
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
 
@@ -333,9 +430,9 @@ def main():
     print("Scoring canonical and novel splice-sites...")
     start = time.time()
     if args.reference:
-        nametoscore = extract_canonical_score(os.path.join(args.output, 'close-down.bed'), args.output, args.reference, True)
+        nametoscore = extract_canonical_score(os.path.join(args.output, 'close-up.bed'), args.output, args.reference, False)
     else:
-        nametoscore = extract_canonical_score(os.path.join(args.output, 'close-down.bed'), args.output, args.zippedreference, True)
+        nametoscore = extract_canonical_score(os.path.join(args.output, 'close-up.bed'), args.output, args.zippedreference, False)
     compare_scores(os.path.join(args.output, "variant-site-acceptorsites.fa"), nametoscore, args.percent, args.output, False, args.libraryname)
     end = time.time()
     print("Finished generating. Time took %s" % (end-start))
@@ -344,6 +441,7 @@ def main():
 
     toRem = []
     toRem += (glob.glob(os.path.join(args.output, '*.bed')))
+    toRem += (glob.glob(os.path.join(args.output, '*.vcf.gz')))
     toRem += (glob.glob(os.path.join(args.output, '*.fa')))
     for i in (toRem):
         os.remove(i)
