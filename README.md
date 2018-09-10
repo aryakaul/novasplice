@@ -1,6 +1,7 @@
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat-square)](http://bioconda.github.io/recipes/novasplice/README.html)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/novasplice/badges/downloads.svg)](https://anaconda.org/bioconda/novasplice)
 [![Anaconda-Server Badge](https://anaconda.org/bioconda/novasplice/badges/license.svg)](https://anaconda.org/bioconda/novasplice)
+[![Anaconda-Server Badge](https://anaconda.org/bioconda/novasplice/badges/version.svg)](https://anaconda.org/bioconda/novasplice)
 
 ## Installation
 If you already have `bioconda` installed, simply run:
